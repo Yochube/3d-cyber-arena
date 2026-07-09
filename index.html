@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 1v1 Cyber Battle Arena - FPS Edition</title>
+  <meta name="description" content="A real-time 3D FPS multiplayer shooting & shielding battle arena with Blink dash.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --color-bg: #07070e;
+      --color-card-bg: rgba(10, 10, 22, 0.7);
+      --color-cyan: #00f0ff;
+      --color-cyan-glow: rgba(0, 240, 255, 0.4);
+      --color-magenta: #ff007f;
+      --color-magenta-glow: rgba(255, 0, 127, 0.4);
+      --color-white: #ffffff;
+      --color-text-gray: #a0a0c0;
+      --color-danger: #ff2a2a;
+      
+      --font-title: 'Orbitron', sans-serif;
+      --font-body: 'Rajdhani', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--color-bg);
+      font-family: var(--font-body);
+      color: var(--color-white);
+    }
+
+    /* 3Dゲームキャンバス */
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+    }
+
+    /* オーバーレイUI */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      background-color: rgba(5, 5, 10, 0.85);
+      backdrop-filter: blur(10px);
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* グラスモルフィズムカード */
+    .glass-card {
+      background: var(--color-card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 40px;
+      width: 90%;
+      max-width: 480px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ネオングロウ効果 */
+    .glow-cyan {
+      box-shadow: 0 0 30px var(--color-cyan-glow), inset 0 0 15px rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+    }
+
+    .glow-magenta {
+      box-shadow: 0 0 30px var(--color-magenta-glow), inset 0 0 15px rgba(255, 0, 127, 0.05);
+      border: 1px solid rgba(255, 0, 127, 0.25);
+    }
+
+    /* タイポグラフィ */
+    .neon-text-magenta {
+      font-family: var(--font-title);
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #fff;
+      text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 40px #ff007f;
+      margin-bottom: 5px;
+    }
+
+    .logo {
+      margin-bottom: 25px;
+    }
+
+    .sub-logo {
+      font-family: var(--font-title);
+      font-size: 0.95rem;
+      letter-spacing: 6px;
+      color: var(--color-cyan);
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+      display: block;
+      font-weight: 700;
+    }
+
+    .description {
+      color: var(--color-text-gray);
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    /* インプットグループ */
+    .input-group {
+      text-align: left;
+      margin-bottom: 25px;
+    }
+
+    .input-group label {
+      display: block;
+      font-family: var(--font-title);
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      color: var(--color-text-gray);
+      margin-bottom: 8px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .input-group input:focus {
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .quick-match-btn {
+      position: relative;
+      width: 100%;
+      padding: 18px;
+      background: var(--color-cyan);
+      border: none;
+      cursor: pointer;
+      outline: none;
+      font-family: var(--font-title);
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 25px var(--color-cyan-glow);
+      margin-bottom: 25px;
+    }
+
+    .quick-match-btn:hover {
+      background: #fff;
+      box-shadow: 0 0 35px rgba(255, 255, 255, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .p2p-separator {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      color: var(--color-text-gray);
+      margin: 25px 0;
+      font-size: 0.95rem;
+      font-family: var(--font-title);
+      letter-spacing: 1px;
+    }
+
+    .p2p-separator::before, .p2p-separator::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .p2p-separator:not(:empty)::before { margin-right: 1em; }
+    .p2p-separator:not(:empty)::after { margin-left: 1em; }
+
+    .p2p-buttons-container {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 10px;
+    }
+
+    .p2p-btn {
+      flex: 1;
+      background: rgba(15, 15, 30, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--font-title);
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 16px 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .p2p-btn i {
+      font-size: 1.2rem;
+    }
+
+    .p2p-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+    }
+
+    .danger-btn {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+      font-family: var(--font-title);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 700;
+    }
+
+    .danger-btn:hover {
+      background: var(--color-danger);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(255, 42, 42, 0.4);
+    }
+
+    /* アクション用ネオンボタン */
+    .neon-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--color-cyan);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #000;
+      border-radius: 8px;
+      box-shadow: 0 0 15px var(--color-cyan-glow);
+      transition: all 0.2s;
+    }
+    .neon-btn:hover {
+      background: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* 操作説明 */
+    .instructions-panel {
+      margin-top: 25px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 15px;
+      text-align: left;
+    }
+
+    .instructions-panel h3 {
+      font-family: var(--font-title);
+      font-size: 0.9rem;
+      color: var(--color-cyan);
+      margin-bottom: 12px;
+      letter-spacing: 1.5px;
+    }
+
+    .instructions-panel ul { list-style: none; }
+    .instructions-panel li {
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      color: var(--color-text-gray);
+      display: flex;
+      align-items: center;
+    }
+
+    .key {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: var(--font-title);
+      font-size: 0.8rem;
+      color: #fff;
+      margin-right: 4px;
+    }
+
+    .mouse-icon, .mouse-btn { color: #fff; margin-right: 5px; }
+    .magenta-text { color: var(--color-magenta); }
+    .cyan-text { color: var(--color-cyan); }
+
+    /* HUD（Heads Up Display） */
+    .hud-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 25px 40px;
+      box-sizing: border-box;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.5s ease;
+    }
+
+    .hud-container.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* HPゲージ & タイマー */
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .player-stat-box {
+      width: 32%;
+      max-width: 380px;
+      background: rgba(10, 10, 20, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 12px 18px;
+      backdrop-filter: blur(8px);
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .player-name {
+      font-family: var(--font-title);
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .ping-indicator, .enemy-label {
+      font-size: 0.75rem;
+      color: var(--color-text-gray);
+      letter-spacing: 1px;
+    }
+
+    .hp-bar-outer {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hp-bar-inner {
+      height: 100%;
+      transition: width 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+      position: relative;
+      z-index: 2;
+    }
+
+    .hp-bar-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      filter: blur(4px);
+      opacity: 0.6;
+      z-index: 1;
+      transition: width 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+    }
+
+    .cyan-bg { background-color: var(--color-cyan); }
+    .magenta-bg { background-color: var(--color-magenta); }
+
+    .hp-text {
+      font-family: var(--font-title);
+      font-size: 0.95rem;
+      margin-top: 6px;
+      font-weight: 700;
+    }
+
+    .text-right {
+      text-align: right;
+      flex-direction: row-reverse;
+    }
+
+    .hp-bar-outer.reverse .hp-bar-inner,
+    .hp-bar-outer.reverse .hp-bar-glow {
+      float: right;
+    }
+
+    /* タイマー */
+    .round-info {
+      text-align: center;
+      align-self: center;
+    }
+
+    .hud-timer {
+      font-family: var(--font-title);
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    .versus-text {
+      font-family: var(--font-title);
+      font-size: 0.9rem;
+      letter-spacing: 4px;
+      color: var(--color-text-gray);
+      margin-top: 2px;
+    }
+
+    /* FPS用 照準 */
+    .crosshair-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 3;
+    }
+
+    .crosshair-dot {
+      width: 4px;
+      height: 4px;
+      background-color: var(--color-white);
+      border-radius: 50%;
+    }
+
+    .crosshair-ring {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 1.5px solid rgba(0, 240, 255, 0.5);
+      border-radius: 50%;
+    }
+
+    /* ボトムコントロール */
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .ability-card {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      background: rgba(10, 10, 20, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px 18px;
+      backdrop-filter: blur(8px);
+      width: 250px;
+    }
+
+    .ability-icon {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.4rem;
+      background: rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+
+    .cyan-border { border: 1.5px solid var(--color-cyan); }
+    .magenta-border { border: 1.5px solid var(--color-magenta); }
+    .yellow-border { border: 1.5px solid #ffaa00; }
+
+    .cooldown-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: rgba(0, 0, 0, 0.7);
+      transition: height 0.1s linear;
+    }
+
+    .ability-info {
+      display: flex;
+      flex-direction: column;
+      margin: 0 14px;
+      flex-grow: 1;
+    }
+
+    .ability-key {
+      font-family: var(--font-title);
+      font-size: 0.75rem;
+      color: var(--color-text-gray);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .ability-name {
+      font-family: var(--font-title);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .status-indicator {
+      margin-top: 2px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .status-ready { color: var(--color-cyan); }
+    .status-cooldown { color: var(--color-danger); }
+    .status-active {
+      color: #ffaa00;
+      animation: blink-anim 0.8s ease infinite;
+    }
+
+    @keyframes blink-anim {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    .quick-tips {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .tip-tag {
+      font-family: var(--font-title);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-text-gray);
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .emoji-hints {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(10, 10, 20, 0.8);
+      padding: 8px 20px;
+      border-radius: 9999px; /* 丸みのあるピル型 */
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .emoji-hints span {
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #fff;
+    }
+
+    .emoji-hints .k {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-family: var(--font-title);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #dfdfea;
+      display: inline-block;
+      min-width: 20px;
+      text-align: center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 2px rgba(0,0,0,0.4);
+    }
+
+    /* ゲーム終了画面 */
+    .end-card {
+      max-width: 440px;
+    }
+
+    .end-subtext {
+      color: var(--color-text-gray);
+      font-size: 1.15rem;
+      margin-bottom: 25px;
+    }
+
+    .match-stats {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      font-family: var(--font-title);
+    }
+
+    .stat-row:last-child { margin-bottom: 0; }
+    .stat-row span:first-child { color: var(--color-text-gray); }
+
+    .end-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    /* 2D 吹き出しエフェクト */
+    .world-chat-bubble {
+      position: absolute;
+      padding: 6px 12px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1.5px solid var(--color-cyan);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 1.4rem;
+      font-weight: bold;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      animation: floatUp 1.2s ease-out forwards;
+      z-index: 4;
+    }
+
+    .world-chat-bubble.opponent { border-color: var(--color-magenta); }
+
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+      15% { opacity: 1; transform: translate(-50%, -100%) scale(1.1); }
+      30% { transform: translate(-50%, -110%) scale(1.0); }
+      85% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -150%) scale(0.8); }
+    }
+
+    /* ダメージテキスト */
+    .world-damage-popup {
+      position: absolute;
+      color: var(--color-danger);
+      font-family: var(--font-title);
+      font-weight: 900;
+      font-size: 1.8rem;
+      text-shadow: 0 0 8px rgba(255, 42, 42, 0.8), 0 0 15px rgba(0,0,0,0.8);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      animation: damageFloat 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+      z-index: 4;
+    }
+
+    .world-damage-popup.shield-hit {
+      color: var(--color-cyan);
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8), 0 0 15px rgba(0,0,0,0.8);
+    }
+
+    @keyframes damageFloat {
+      0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+      20% { opacity: 1; transform: translate(-50%, -30px) scale(1.3); }
+      100% { opacity: 0; transform: translate(-50%, -80px) scale(0.9); }
+    }
+
+    /* 警告HPの色変更 */
+    .warning-hp-bg { background-color: #ffaa00 !important; }
+    .critical-hp-bg { background-color: #ff2a2a !important; }
+
+    /* サンドボックス（ソロ動作確認用）通知 */
+    #sandboxBadge {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 240, 255, 0.8);
+      border: 1px solid var(--color-cyan);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-family: var(--font-title);
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #000;
+      z-index: 12;
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 被弾時の画面フラッシュエフェクト用オーバーレイ -->
+  <div id="damageFlash" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.25); z-index: 9; pointer-events: none; opacity: 0; transition: opacity 0.08s ease-out;"></div>
+
+  <!-- サンドボックス通知バッジ -->
+  <div id="sandboxBadge">SANDBOX / OFFLINE MODE (移動・スキル射撃テスト可能)</div>
+
+  <!-- 3D Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- メインロビー（ログイン・部屋選択）画面 -->
+  <div id="authScreen" class="overlay active">
+    <div class="glass-card glow-magenta">
+      <div class="logo">
+        <h1 class="neon-text-magenta">CYBER ARENA</h1>
+        <span class="sub-logo">1v1 FPS BATTLE</span>
+      </div>
+      <p class="description">ユーザーネームを設定して、対戦モードを選択してください。</p>
+      
+      <div class="input-group">
+        <label for="usernameInput"><i class="fa-solid fa-user"></i> USERNAME</label>
+        <input type="text" id="usernameInput" maxlength="15" value="サイバー戦士" placeholder="ニックネームを入力">
+      </div>
+
+      <!-- クイックマッチ [AI対戦] ボタン -->
+      <button id="quickMatchBtn" class="quick-match-btn">
+        <i class="fa-solid fa-bolt"></i> クイックマッチ [AI対戦]
+      </button>
+
+      <!-- 区切り表記 -->
+      <div class="p2p-separator">または P2P対戦 (WebRTC)</div>
+
+      <!-- P2P用の部屋作成・部屋参加ボタン -->
+      <div class="p2p-buttons-container">
+        <button id="hostBtn" class="p2p-btn">
+          <i class="fa-solid fa-house-signal"></i> 部屋を作成 (HOST)
+        </button>
+        <button id="joinRoomBtn" class="p2p-btn">
+          <i class="fa-solid fa-right-to-bracket"></i> 部屋に参加 (JOIN)
+        </button>
+      </div>
+
+      <div class="instructions-panel">
+        <h3><i class="fa-solid fa-gamepad"></i> CONTROLS / 操作方法</h3>
+        <ul>
+          <li><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> : 移動</li>
+          <li><span class="key">Shift</span> : <strong style="color:#ffaa00;">ブリンク（超加速ダッシュ / 3秒CD）</strong></li>
+          <li><span class="mouse-icon"><i class="fa-solid fa-mouse"></i> マウス移動</span> : 3D視点エイム操作</li>
+          <li><span class="mouse-btn left-btn"><i class="fa-solid fa-mouse-pointer"></i> 左クリック</span> : <strong class="magenta-text">ショット (射撃)</strong></li>
+          <li><span class="mouse-btn right-btn"><i class="fa-solid fa-mouse-pointer"></i> 右クリック</span> : <strong class="cyan-text">シールド展開 (防壁)</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- P2P HOST待機画面 -->
+  <div id="hostRoomScreen" class="overlay">
+    <div class="glass-card glow-cyan">
+      <div class="spinner-container">
+        <div class="cyber-spinner"></div>
+        <i class="fa-solid fa-house-signal core-icon"></i>
+      </div>
+      <h2>部屋を作成しました</h2>
+      <p style="margin-bottom: 10px; font-size: 1.05rem; color: var(--color-text-gray);">対戦相手に以下の部屋IDを伝えてください。</p>
+      <div id="roomCodeDisplay" style="font-family: var(--font-title); font-size: 3rem; font-weight: 900; color: var(--color-cyan); letter-spacing: 4px; margin: 15px auto; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px dashed var(--color-cyan); max-width: 240px;">----</div>
+      <p style="color: #ffaa00; font-size: 0.95rem; margin-bottom: 25px;">※対戦相手の参加を待っています。待機中も自由に移動・ブリンク練習が可能です！</p>
+      <button id="cancelHostBtn" class="danger-btn">ロビーに戻る</button>
+    </div>
+  </div>
+
+  <!-- P2P JOIN入力画面 -->
+  <div id="joinRoomScreen" class="overlay">
+    <div class="glass-card glow-magenta">
+      <i class="fa-solid fa-right-to-bracket" style="font-size: 3rem; color: var(--color-magenta); margin-bottom: 20px;"></i>
+      <h2>部屋に参加する</h2>
+      <p style="color: var(--color-text-gray); margin-bottom: 20px;">4桁 of 部屋IDを入力してください。</p>
+      <div class="input-group" style="text-align: center;">
+        <input type="text" id="roomCodeInput" maxlength="4" placeholder="0000" style="text-align: center; font-size: 2.2rem; font-family: var(--font-title); letter-spacing: 5px; max-width: 220px; margin: 0 auto 20px; display: block;">
+      </div>
+      <div style="display: flex; gap: 15px;">
+        <button id="cancelJoinBtn" class="danger-btn" style="flex: 1;">キャンセル</button>
+        <button id="submitJoinBtn" class="neon-btn glow-cyan" style="flex: 1; padding: 12px;"><span class="btn-content">参加</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD（Heads Up Display） -->
+  <div id="hudScreen" class="hud-container">
+    <div class="hud-top">
+      <!-- 自分のHP (左) -->
+      <div class="player-stat-box player1-hud">
+        <div class="stat-header">
+          <span id="p1Name" class="player-name cyan-text">YOU</span>
+          <span class="ping-indicator"><i class="fa-solid fa-signal"></i> FPS MODE</span>
+        </div>
+        <div class="hp-bar-outer">
+          <div id="p1HpBar" class="hp-bar-inner cyan-bg" style="width: 100%;"></div>
+          <div class="hp-bar-glow cyan-bg" style="width: 100%;"></div>
+        </div>
+        <div class="hp-text"><span id="p1HpText">100</span> / 100 HP</div>
+      </div>
+
+      <!-- タイマー情報 -->
+      <div class="round-info">
+        <div class="hud-timer" id="gameTimer">00:00</div>
+        <div class="versus-text">VS</div>
+      </div>
+
+      <!-- 敵のHP (右) -->
+      <div class="player-stat-box player2-hud">
+        <div class="stat-header text-right">
+          <span id="p2Name" class="player-name magenta-text">OPPONENT</span>
+          <span class="enemy-label">HOSTILE</span>
+        </div>
+        <div class="hp-bar-outer reverse">
+          <div id="p2HpBar" class="hp-bar-inner magenta-bg" style="width: 100%;"></div>
+          <div class="hp-bar-glow magenta-bg" style="width: 100%;"></div>
+        </div>
+        <div class="hp-text text-right"><span id="p2HpText">100</span> / 100 HP</div>
+      </div>
+    </div>
+
+    <!-- FPS用 照準 -->
+    <div class="crosshair-container">
+      <div class="crosshair-dot"></div>
+      <div class="crosshair-ring"></div>
+    </div>
+
+    <!-- ボトムコントロールとクールダウン -->
+    <div class="hud-bottom">
+      <!-- 左クリック：ショット (射撃) -->
+      <div class="ability-card barrier-ability" id="shootAbility">
+        <div class="ability-icon magenta-border">
+          <i class="fa-solid fa-gun magenta-text"></i>
+          <div class="cooldown-overlay" id="shootCooldownOverlay"></div>
+        </div>
+        <div class="ability-info">
+          <span class="ability-key">L-CLICK</span>
+          <span class="ability-name">レーザー (LASER)</span>
+          <div class="status-indicator">
+            <span id="shootStatus" class="status-ready">READY</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中央：絵文字ガイド ＆ ブリンク能力 -->
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; pointer-events: auto;">
+        <!-- 絵文字ガイド (image_bca46b.pngを忠実に再現) -->
+        <div class="quick-tips">
+          <span class="tip-tag">EMOJI [1-4]</span>
+          <div class="emoji-hints">
+            <span><span class="k">1</span>👍</span>
+            <span><span class="k">2</span>🔥</span>
+            <span><span class="k">3</span>😎</span>
+            <span><span class="k">4</span>💀</span>
+          </div>
+        </div>
+
+        <!-- ブリンク（SHIFTキー） -->
+        <div class="ability-card blink-ability" id="blinkAbility" style="margin: 0;">
+          <div class="ability-icon yellow-border">
+            <i class="fa-solid fa-bolt" style="color: #ffaa00;"></i>
+            <div class="cooldown-overlay" id="blinkCooldownOverlay"></div>
+          </div>
+          <div class="ability-info">
+            <span class="ability-key">SHIFT</span>
+            <span class="ability-name">ブリンク (BLINK)</span>
+            <div class="status-indicator">
+              <span id="blinkStatus" class="status-ready">READY</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右クリック：バリア (防壁) -->
+      <div class="ability-card shoot-ability" id="barrierAbility">
+        <div class="ability-info text-right">
+          <span class="ability-key">R-CLICK</span>
+          <span class="ability-name">バリア (SHIELD)</span>
+          <div class="status-indicator">
+            <span id="barrierStatus" class="status-ready">READY</span>
+          </div>
+        </div>
+        <div class="ability-icon cyan-border">
+          <i class="fa-solid fa-shield-halved cyan-text"></i>
+          <div class="cooldown-overlay" id="barrierCooldownOverlay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ゲーム終了画面 -->
+  <div id="endScreen" class="overlay">
+    <div class="glass-card end-card glow-magenta">
+      <h1 id="endResultText" class="neon-text-magenta">VICTORY</h1>
+      <p id="endSubText" class="end-subtext">対戦相手を撃破しました！</p>
+      
+      <div class="match-stats">
+        <div class="stat-row">
+          <span>対戦相手</span>
+          <span id="endOpponentName" class="magenta-text">Opponent</span>
+        </div>
+        <div class="stat-row">
+          <span>生存時間</span>
+          <span id="endMatchTime">0:00</span>
+        </div>
+      </div>
+
+      <div class="end-actions">
+        <button id="rematchBtn" class="neon-btn glow-cyan">
+          <span class="btn-content">もう一度対戦する</span>
+        </button>
+        <button id="returnToLobbyBtn" class="neon-btn outline glow-magenta">
+          <span class="btn-content">ロビーに戻る</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js 3Dレンダラー -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Firebase SDK (P2P用のFirestoreリアルタイム同期エンジン) -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- ゲームロジック -->
+  <script>
+    // --- STREAMING_CHUNK: Initializing SFX and audio systems... ---
+    // --- Web Audio API を使用した音響合成システム ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      const now = audioCtx.currentTime;
+
+      if (type === 'laser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'barrier') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'blink') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(1500, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'hit') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === 'barrierHit') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.setValueAtTime(450, now + 0.05);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'explosion') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(10, now + 0.6);
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(300, now);
+        osc.disconnect(gain);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      }
+    }
+
+    // --- ゲーム環境設定 ---
+    const ARENA_SIZE = 40;
+    const PLAYER_SPEED = 7.5;
+    const BULLET_SPEED = 28;
+    const BULLET_COOLDOWN = 450;
+    const BARRIER_COOLDOWN = 6000;
+    const BARRIER_DURATION = 3500;
+    const BLINK_COOLDOWN = 3000;
+    const BLINK_DISTANCE = 8.5;
+    const MAX_HP = 100;
+
+    const OBSTACLE_CONFIGS = [
+      { x: -8, z: -8, w: 2.5, h: 4, d: 2.5 },
+      { x: 8, z: 8, w: 2.5, h: 4, d: 2.5 },
+      { x: -8, z: 8, w: 2.5, h: 4, d: 2.5 },
+      { x: 8, z: -8, w: 2.5, h: 4, d: 2.5 },
+      { x: 0, z: -12, w: 4, h: 3, d: 2 },
+      { x: 0, z: 12, w: 4, h: 3, d: 2 }
+    ];
+
+    // --- STREAMING_CHUNK: Initializing game state properties... ---
+    // --- 状態管理 ---
+    let db = null;
+    let auth = null;
+    let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let currentUser = null;
+
+    let isPlaying = false;
+    let isSandbox = false;   // ロビー中のテスト移動
+    let isAIActive = false;  // AI対戦モード
+    let myRole = 'player1';
+    let myUsername = 'You';
+    let opponentUsername = 'Opponent';
+    let roomId = null;
+    let roomListenerUnsubscribe = null;
+
+    // エンティティ
+    let players = {
+      player1: { mesh: null, hp: MAX_HP, pos: { x: -15, y: 0.8, z: 0 }, rotY: 0, targetPos: null, targetRotY: 0 },
+      player2: { mesh: null, hp: MAX_HP, pos: { x: 15, y: 0.8, z: 0 }, rotY: Math.PI, targetPos: null, targetRotY: Math.PI }
+    };
+
+    let bullets = [];
+    let barriers = {};
+    let obstacles = [];
+    let particles = [];
+
+    // 入力監視
+    const keys = { w: false, a: false, s: false, d: false };
+    let mouseRotationY = 0;
+    let cameraPitch = 0.0;
+
+    // クールダウン
+    let lastShootTime = 0;
+    let lastBarrierTime = 0;
+    let lastBlinkTime = 0;
+    let barrierActive = false;
+
+    // FOVアニメーション（ブリンク加速用）
+    let targetFov = 65;
+    let currentFov = 65;
+    let cameraShake = 0;
+
+    // DOM参照
+    const authScreen = document.getElementById('authScreen');
+    const hostRoomScreen = document.getElementById('hostRoomScreen');
+    const joinRoomScreen = document.getElementById('joinRoomScreen');
+    const hudScreen = document.getElementById('hudScreen');
+    const endScreen = document.getElementById('endScreen');
+    
+    const usernameInput = document.getElementById('usernameInput');
+    const quickMatchBtn = document.getElementById('quickMatchBtn');
+    const hostBtn = document.getElementById('hostBtn');
+    const joinRoomBtn = document.getElementById('joinRoomBtn');
+    
+    const cancelHostBtn = document.getElementById('cancelHostBtn');
+    const cancelJoinBtn = document.getElementById('cancelJoinBtn');
+    const submitJoinBtn = document.getElementById('submitJoinBtn');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+    const sandboxBadge = document.getElementById('sandboxBadge');
+
+    const p1Name = document.getElementById('p1Name');
+    const p2Name = document.getElementById('p2Name');
+    const p1HpBar = document.getElementById('p1HpBar');
+    const p2HpBar = document.getElementById('p2HpBar');
+    const p1HpText = document.getElementById('p1HpText');
+    const p2HpText = document.getElementById('p2HpText');
+
+    const shootAbility = document.getElementById('shootAbility');
+    const barrierAbility = document.getElementById('barrierAbility');
+    const blinkAbility = document.getElementById('blinkAbility');
+    const shootCooldownOverlay = document.getElementById('shootCooldownOverlay');
+    const barrierCooldownOverlay = document.getElementById('barrierCooldownOverlay');
+    const blinkCooldownOverlay = document.getElementById('blinkCooldownOverlay');
+    const shootStatus = document.getElementById('shootStatus');
+    const barrierStatus = document.getElementById('barrierStatus');
+    const blinkStatus = document.getElementById('blinkStatus');
+
+    const gameTimer = document.getElementById('gameTimer');
+    const endResultText = document.getElementById('endResultText');
+    const endSubText = document.getElementById('endSubText');
+    const endOpponentName = document.getElementById('endOpponentName');
+    const endMatchTime = document.getElementById('endMatchTime');
+
+    // --- STREAMING_CHUNK: Initializing Firebase and login context... ---
+    // --- Firebase / Firestore の認証初期化 ---
+    async function initFirebase() {
+      try {
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          const config = JSON.parse(__firebase_config);
+          const app = firebase.initializeApp(config);
+          auth = firebase.auth();
+          db = firebase.firestore();
+
+          // 匿名ログインの実行 (RULE 3に厳格準拠)
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            try {
+              const res = await auth.signInWithCustomToken(__initial_auth_token);
+              currentUser = res.user;
+            } catch (e) {
+              const res = await auth.signInAnonymously();
+              currentUser = res.user;
+            }
+          } else {
+            const res = await auth.signInAnonymously();
+            currentUser = res.user;
+          }
+          console.log("Firebase initialized successfully. Logged in as:", currentUser.uid);
+        }
+      } catch (e) {
+        console.error("Firebase Initialization Failed:", e);
+      }
+    }
+
+    // --- Three.js レンダラー設定 ---
+    const canvas = document.getElementById('gameCanvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x04040a);
+    scene.fog = new THREE.FogExp2(0x04040a, 0.025);
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- STREAMING_CHUNK: Constructing the Three.js 3D arena... ---
+    // --- アリーナ作成 ---
+    function initArena() {
+      obstacles.forEach(o => {
+        scene.remove(o.mesh);
+        scene.remove(o.glowAcc);
+      });
+      obstacles = [];
+      
+      bullets.forEach(b => scene.remove(b.mesh));
+      bullets = [];
+      
+      Object.keys(barriers).forEach(id => scene.remove(barriers[id].mesh));
+      barriers = {};
+      
+      particles.forEach(p => scene.remove(p.mesh));
+      particles = [];
+
+      // 床
+      const floorGeo = new THREE.PlaneGeometry(ARENA_SIZE, ARENA_SIZE);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x0a0a14,
+        roughness: 0.6,
+        metalness: 0.8
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // グリッド
+      const gridHelper = new THREE.GridHelper(ARENA_SIZE, 40, 0x00f0ff, 0x111133);
+      gridHelper.position.y = 0.01;
+      scene.add(gridHelper);
+
+      // 壁
+      const wallMat = new THREE.MeshStandardMaterial({
+        color: 0x0d0d1a,
+        emissive: 0x050510,
+        roughness: 0.9
+      });
+      
+      const borderThickness = 1.0;
+      const wallHeight = 4.0;
+
+      const walls = [
+        new THREE.Mesh(new THREE.BoxGeometry(ARENA_SIZE + borderThickness * 2, wallHeight, borderThickness), wallMat),
+        new THREE.Mesh(new THREE.BoxGeometry(ARENA_SIZE + borderThickness * 2, wallHeight, borderThickness), wallMat),
+        new THREE.Mesh(new THREE.BoxGeometry(borderThickness, wallHeight, ARENA_SIZE), wallMat),
+        new THREE.Mesh(new THREE.BoxGeometry(borderThickness, wallHeight, ARENA_SIZE), wallMat)
+      ];
+
+      walls[0].position.set(0, wallHeight/2, -ARENA_SIZE/2 - borderThickness/2);
+      walls[1].position.set(0, wallHeight/2, ARENA_SIZE/2 + borderThickness/2);
+      walls[2].position.set(-ARENA_SIZE/2 - borderThickness/2, wallHeight/2, 0);
+      walls[3].position.set(ARENA_SIZE/2 + borderThickness/2, wallHeight/2, 0);
+
+      walls.forEach(w => {
+        w.receiveShadow = true;
+        w.castShadow = true;
+        scene.add(w);
+      });
+
+      // 障害物の設置
+      OBSTACLE_CONFIGS.forEach(config => {
+        const geo = new THREE.BoxGeometry(config.w, config.h, config.d);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x15152a,
+          roughness: 0.3,
+          metalness: 0.7
+        });
+        const column = new THREE.Mesh(geo, mat);
+        column.position.set(config.x, config.h / 2, config.z);
+        column.castShadow = true;
+        column.receiveShadow = true;
+        scene.add(column);
+        
+        const glowGeo = new THREE.BoxGeometry(config.w + 0.05, 0.15, config.d + 0.05);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xff007f });
+        const glowAcc = new THREE.Mesh(glowGeo, glowMat);
+        glowAcc.position.set(config.x, config.h, config.z);
+        scene.add(glowAcc);
+
+        obstacles.push({
+          mesh: column,
+          bbox: new THREE.Box3().setFromObject(column),
+          glowAcc: glowAcc
+        });
+      });
+
+      // 照明
+      const ambientLight = new THREE.AmbientLight(0x0c0c1e, 0.7);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      mainLight.position.set(10, 20, 10);
+      mainLight.castShadow = true;
+      scene.add(mainLight);
+
+      const leftGlow = new THREE.PointLight(0x00f0ff, 1.8, 25);
+      leftGlow.position.set(-15, 3, 0);
+      scene.add(leftGlow);
+
+      const rightGlow = new THREE.PointLight(0xff007f, 1.8, 25);
+      rightGlow.position.set(15, 3, 0);
+      scene.add(rightGlow);
+    }
+
+    // --- 敵視点用のプレイヤーメッシュ ---
+    function createPlayerMesh(role) {
+      const group = new THREE.Group();
+      const mainColor = role === 'player1' ? 0x00f0ff : 0xff007f;
+      const secondaryColor = role === 'player1' ? 0x0055ff : 0xaa00aa;
+
+      const bodyGeo = new THREE.CylinderGeometry(0.6, 0.8, 1.5, 8);
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x1b1b3a,
+        roughness: 0.2,
+        metalness: 0.8
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.75;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      const faceGeo = new THREE.BoxGeometry(0.7, 0.3, 0.45);
+      const faceMat = new THREE.MeshBasicMaterial({ color: mainColor });
+      const face = new THREE.Mesh(faceGeo, faceMat);
+      face.position.set(0, 1.1, 0.45);
+      group.add(face);
+
+      const gunGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+      const gunMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.9, roughness: 0.2 });
+      const gun = new THREE.Mesh(gunGeo, gunMat);
+      gun.rotation.x = Math.PI / 2;
+      gun.position.set(0.6, 0.6, 0.3);
+      group.add(gun);
+
+      const thrusterGeo = new THREE.CylinderGeometry(0.5, 0.4, 0.15, 8);
+      const thrusterMat = new THREE.MeshBasicMaterial({ color: secondaryColor });
+      const thruster = new THREE.Mesh(thrusterGeo, thrusterMat);
+      thruster.position.y = 0.05;
+      group.add(thruster);
+
+      const playerLight = new THREE.PointLight(mainColor, 1.0, 8);
+      playerLight.position.set(0, 1.3, 0);
+      group.add(playerLight);
+
+      scene.add(group);
+      return group;
+    }
+
+    // --- STREAMING_CHUNK: Setting up particle and pop-up FX... ---
+    // --- エフェクト ---
+    function createSparks(position, colorHex, count = 10) {
+      const geo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(position);
+
+        const velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.2) * 8,
+          (Math.random() - 0.5) * 10
+        );
+
+        particles.push({
+          mesh,
+          velocity,
+          life: 0.4 + Math.random() * 0.4
+        });
+        scene.add(mesh);
+      }
+    }
+
+    function createBlinkTrail(position, colorHex) {
+      const geo = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+      const mat = new THREE.MeshBasicMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      for (let i = 0; i < 15; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(position).add(new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 1.5,
+          (Math.random() - 0.5) * 2
+        ));
+
+        const velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+        );
+
+        particles.push({
+          mesh,
+          velocity,
+          life: 0.3 + Math.random() * 0.3
+        });
+        scene.add(mesh);
+      }
+    }
+
+    function get2DCoords(pos3D) {
+      const vector = new THREE.Vector3().copy(pos3D);
+      vector.project(camera);
+      const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+
+      const facingDir = new THREE.Vector3();
+      camera.getWorldDirection(facingDir);
+      const toPoint = new THREE.Vector3().subVectors(pos3D, camera.position);
+      const dot = toPoint.dot(facingDir);
+
+      return { x, y, visible: dot > 0 };
+    }
+
+    // [修正] ダメージスクリーンフラッシュのトリガー
+    function triggerDamageFlash() {
+      const flash = document.getElementById('damageFlash');
+      if (!flash) return;
+      flash.style.opacity = '1';
+      setTimeout(() => {
+        flash.style.opacity = '0';
+      }, 150);
+    }
+
+    // [修正] 絵文字ポップアップの双方向リアルタイム同期・吹き出し処理
+    function triggerEmojiPopup(emoji, isOpponent) {
+      const pId = isOpponent ? (myRole === 'player1' ? 'player2' : 'player1') : myRole;
+      const playerObj = players[pId];
+      if (!playerObj) return;
+
+      const bubble = document.createElement('div');
+      
+      if (!isOpponent) {
+        // 自分自身（送信者）：FPS視点でもHUD上の自己ステータス付近に表示される美しい2D吹き出し
+        bubble.className = `world-chat-bubble`;
+        bubble.style.position = 'absolute';
+        bubble.style.left = '200px';
+        bubble.style.bottom = '180px';
+        bubble.style.transform = 'translate(-50%, 0) scale(1.3)';
+        bubble.style.zIndex = '15';
+        bubble.style.boxShadow = '0 0 15px rgba(0, 240, 255, 0.4)';
+        bubble.innerText = emoji;
+        document.body.appendChild(bubble);
+
+        setTimeout(() => {
+          bubble.style.transition = 'opacity 0.3s, transform 0.3s';
+          bubble.style.opacity = '0';
+          bubble.style.transform = 'translate(-50%, -40px) scale(0.8)';
+          setTimeout(() => bubble.remove(), 300);
+        }, 900);
+      } else {
+        // 対戦相手（受信者側の画面）：敵キャラクターアバターの頭上3D座標へのビルボードポップアップ
+        if (!playerObj.mesh) return;
+        bubble.className = `world-chat-bubble opponent`;
+        bubble.innerText = emoji;
+        document.body.appendChild(bubble);
+
+        const updateInterval = setInterval(() => {
+          if (!isPlaying && !isSandbox) {
+            clearInterval(updateInterval);
+            bubble.remove();
+            return;
+          }
+
+          const targetPosition = new THREE.Vector3().copy(playerObj.mesh.position).add(new THREE.Vector3(0, 1.8, 0));
+          const coords = get2DCoords(targetPosition);
+          if (coords.visible) {
+            bubble.style.display = 'block';
+            bubble.style.left = `${coords.x}px`;
+            bubble.style.top = `${coords.y}px`;
+          } else {
+            bubble.style.display = 'none';
+          }
+        }, 1000 / 60);
+
+        setTimeout(() => {
+          clearInterval(updateInterval);
+          bubble.remove();
+        }, 1200);
+      }
+    }
+
+    function triggerDamagePopup(damageText, position3D, isShield = false) {
+      const popup = document.createElement('div');
+      popup.className = `world-damage-popup ${isShield ? 'shield-hit' : ''}`;
+      popup.innerText = damageText;
+      document.body.appendChild(popup);
+
+      const updateInterval = setInterval(() => {
+        if (!isPlaying && !isSandbox) {
+          clearInterval(updateInterval);
+          popup.remove();
+          return;
+        }
+        const coords = get2DCoords(position3D);
+        if (coords.visible) {
+          popup.style.display = 'block';
+          popup.style.left = `${coords.x}px`;
+          popup.style.top = `${coords.y}px`;
+        } else {
+          popup.style.display = 'none';
+        }
+      }, 1000 / 60);
+
+      setTimeout(() => {
+        clearInterval(updateInterval);
+        popup.remove();
+      }, 800);
+    }
+
+    // --- STREAMING_CHUNK: Implementing keyboard and mouse event listeners... ---
+    // --- プレイヤーアバターと初期配置 ---
+    function initPlayers(startPos, startRotY) {
+      if (players.player1.mesh) scene.remove(players.player1.mesh);
+      if (players.player2.mesh) scene.remove(players.player2.mesh);
+
+      players.player1.mesh = createPlayerMesh('player1');
+      players.player2.mesh = createPlayerMesh('player2');
+
+      players.player1.hp = MAX_HP;
+      players.player2.hp = MAX_HP;
+
+      if (myRole === 'player1') {
+        players.player1.mesh.position.set(startPos.x, startPos.y, startPos.z);
+        players.player1.mesh.rotation.y = startRotY;
+        players.player1.pos = startPos;
+        players.player1.rotY = startRotY;
+        mouseRotationY = startRotY;
+        players.player1.mesh.visible = false; // 自分は見えない
+
+        players.player2.mesh.position.set(-startPos.x, startPos.y, startPos.z);
+        players.player2.mesh.rotation.y = Math.PI - startRotY;
+        players.player2.pos = { x: -startPos.x, y: startPos.y, z: startPos.z };
+        players.player2.rotY = Math.PI - startRotY;
+        players.player2.mesh.visible = true;
+      } else {
+        players.player2.mesh.position.set(startPos.x, startPos.y, startPos.z);
+        players.player2.mesh.rotation.y = startRotY;
+        players.player2.pos = startPos;
+        players.player2.rotY = startRotY;
+        mouseRotationY = startRotY;
+        players.player2.mesh.visible = false; // 自分は見えない
+
+        players.player1.mesh.position.set(-startPos.x, startPos.y, startPos.z);
+        players.player1.mesh.rotation.y = Math.PI - startRotY;
+        players.player1.pos = { x: -startPos.x, y: startPos.y, z: startPos.z };
+        players.player1.rotY = Math.PI - startRotY;
+        players.player1.mesh.visible = true;
+      }
+
+      players.player1.targetPos = null;
+      players.player2.targetPos = null;
+    }
+
+    // --- キーボード＆マウス制御 ---
+    document.addEventListener('keydown', (e) => {
+      if (!isPlaying && !isSandbox) return;
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'arrowup') keys.w = true;
+      if (key === 'a' || key === 'arrowleft') keys.a = true;
+      if (key === 's' || key === 'arrowdown') keys.s = true;
+      if (key === 'd' || key === 'arrowright') keys.d = true;
+
+      if (e.key === 'Shift') {
+        triggerBlink();
+      }
+
+      // [修正] image_bca46b.pngに沿った1-4キーの絵文字連動
+      if (key === '1') sendEmoji('👍');
+      if (key === '2') sendEmoji('🔥');
+      if (key === '3') sendEmoji('😎');
+      if (key === '4') sendEmoji('💀');
+    });
+
+    document.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'arrowup') keys.w = false;
+      if (key === 'a' || key === 'arrowleft') keys.a = false;
+      if (key === 's' || key === 'arrowdown') keys.s = false;
+      if (key === 'd' || key === 'arrowright') keys.d = false;
+    });
+
+    canvas.addEventListener('click', () => {
+      if (isPlaying || isSandbox) {
+        canvas.requestPointerLock();
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if ((!isPlaying && !isSandbox) || document.pointerLockElement !== canvas) return;
+      const sensitivity = 0.002;
+      mouseRotationY -= e.movementX * sensitivity;
+      cameraPitch += e.movementY * sensitivity;
+      cameraPitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, cameraPitch));
+    });
+
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (!isPlaying && !isSandbox) return;
+      if (e.button === 0) {
+        triggerShoot();
+      } else if (e.button === 2) {
+        triggerBarrierPlacement();
+      }
+    });
+
+    // --- STREAMING_CHUNK: Implementing weapons, barrier, and blink skills... ---
+    // --- 各種スキルの発動ロジック ---
+
+    // 1. レーザー射撃
+    function triggerShoot() {
+      const now = Date.now();
+      if (now - lastShootTime < BULLET_COOLDOWN) return;
+      lastShootTime = now;
+
+      const shootDir = new THREE.Vector3();
+      camera.getWorldDirection(shootDir);
+      const startPos = new THREE.Vector3().copy(camera.position).add(shootDir.clone().multiplyScalar(0.8));
+
+      const bulletId = `${myRole}_${Date.now()}`;
+      spawnBullet(startPos, shootDir, myRole, bulletId);
+      playSound('laser');
+
+      // リアルタイム対戦での同期発信
+      if (db && roomId && isPlaying && !isAIActive) {
+        sendFirestoreAction({ type: 'shoot', bulletId, startPos: { x: startPos.x, y: startPos.y, z: startPos.z }, dir: { x: shootDir.x, y: shootDir.y, z: shootDir.z }, owner: myRole });
+      }
+
+      // AI戦の際のAIリアクション（シールド展開判定）
+      if (isAIActive && Math.random() < 0.6) {
+        setTimeout(() => {
+          if (!isPlaying || !isAIActive) return;
+          const bot = players.player2;
+          const hasActiveBarrier = Object.values(barriers).some(b => b.owner === 'player2');
+          if (!hasActiveBarrier) {
+            const dir = new THREE.Vector3().subVectors(players.player1.mesh.position, bot.mesh.position).normalize();
+            const barrierPos = new THREE.Vector3().copy(bot.mesh.position).add(dir.multiplyScalar(2.2));
+            barrierPos.y = 1.0;
+            spawnBarrier(barrierPos, bot.rotY, 'player2', `ai_shield_${Date.now()}`);
+            playSound('barrier');
+          }
+        }, 180 + Math.random() * 200);
+      }
+
+      triggerCooldownUI(shootAbility, shootCooldownOverlay, shootStatus, BULLET_COOLDOWN);
+    }
+
+    // 2. バリア設置
+    function triggerBarrierPlacement() {
+      const now = Date.now();
+      if (now - lastBarrierTime < BARRIER_COOLDOWN) return;
+      lastBarrierTime = now;
+      barrierActive = true;
+
+      const lookDir = new THREE.Vector3();
+      camera.getWorldDirection(lookDir);
+      lookDir.y = 0;
+      lookDir.normalize();
+
+      const barrierPos = new THREE.Vector3().copy(camera.position).add(lookDir.multiplyScalar(2.5));
+      barrierPos.y = 1.0;
+
+      const rotY = mouseRotationY;
+      const barrierId = `${myRole}_${Date.now()}`;
+
+      spawnBarrier(barrierPos, rotY, myRole, barrierId);
+      playSound('barrier');
+
+      if (db && roomId && isPlaying && !isAIActive) {
+        sendFirestoreAction({ type: 'placeBarrier', barrierId, pos: { x: barrierPos.x, y: barrierPos.y, z: barrierPos.z }, rotY: rotY, owner: myRole });
+      }
+
+      triggerActiveUI(barrierAbility, barrierCooldownOverlay, barrierStatus, BARRIER_DURATION, BARRIER_COOLDOWN);
+    }
+
+    // 3. ブリンク高速回避ダッシュ
+    function triggerBlink() {
+      const now = Date.now();
+      if (now - lastBlinkTime < BLINK_COOLDOWN) return;
+      lastBlinkTime = now;
+
+      const me = players[myRole];
+      const moveDirection = new THREE.Vector3();
+      if (keys.w) moveDirection.z += 1;
+      if (keys.s) moveDirection.z -= 1;
+      if (keys.a) moveDirection.x += 1;
+      if (keys.d) moveDirection.x -= 1;
+
+      if (moveDirection.lengthSq() === 0) {
+        moveDirection.z = 1;
+      }
+      moveDirection.normalize();
+      moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseRotationY);
+
+      const startBlinkPos = new THREE.Vector3().copy(me.mesh.position);
+      const blinkDelta = moveDirection.multiplyScalar(BLINK_DISTANCE);
+      const targetBlinkPos = new THREE.Vector3().copy(startBlinkPos).add(blinkDelta);
+
+      const margin = 0.8;
+      const boundary = ARENA_SIZE / 2 - margin;
+      targetBlinkPos.x = Math.max(-boundary, Math.min(boundary, targetBlinkPos.x));
+      targetBlinkPos.z = Math.max(-boundary, Math.min(boundary, targetBlinkPos.z));
+
+      // 障害物との簡易衝突判定
+      const pBBox = new THREE.Box3(
+        new THREE.Vector3(targetBlinkPos.x - 0.6, 0, targetBlinkPos.z - 0.6),
+        new THREE.Vector3(targetBlinkPos.x + 0.6, 1.5, targetBlinkPos.z + 0.6)
+      );
+
+      for (const obs of obstacles) {
+        if (pBBox.intersectsBox(obs.bbox)) {
+          targetBlinkPos.copy(startBlinkPos).add(blinkDelta.multiplyScalar(0.4));
+          break;
+        }
+      }
+
+      me.mesh.position.copy(targetBlinkPos);
+      me.pos = { x: targetBlinkPos.x, y: targetBlinkPos.y, z: targetBlinkPos.z };
+
+      targetFov = 95;
+      playSound('blink');
+
+      createBlinkTrail(startBlinkPos, myRole === 'player1' ? 0x00f0ff : 0xff007f);
+      createBlinkTrail(targetBlinkPos, myRole === 'player1' ? 0x00f0ff : 0xff007f);
+
+      if (db && roomId && isPlaying && !isAIActive) {
+        sendFirestoreAction({ type: 'blink', startPos: { x: startBlinkPos.x, y: startBlinkPos.y, z: startBlinkPos.z }, targetPos: me.pos, role: myRole });
+      } else {
+        triggerEmojiPopup('⚡', false);
+      }
+
+      triggerCooldownUI(blinkAbility, blinkCooldownOverlay, blinkStatus, BLINK_COOLDOWN);
+    }
+
+    function sendEmoji(emoji) {
+      triggerEmojiPopup(emoji, false);
+      if (db && roomId && isPlaying && !isAIActive) {
+        sendFirestoreAction({ type: 'chat', emoji });
+      }
+    }
+
+    // --- オブジェクト生成 ---
+    function spawnBullet(startPos, dir, owner, bulletId) {
+      const bulletGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 6);
+      const glowHex = owner === 'player1' ? 0x00f0ff : 0xff007f;
+      const bulletMat = new THREE.MeshBasicMaterial({ color: glowHex });
+
+      const mesh = new THREE.Group();
+      const cylinder = new THREE.Mesh(bulletGeo, bulletMat);
+      cylinder.rotation.x = Math.PI / 2;
+      mesh.add(cylinder);
+
+      const light = new THREE.PointLight(glowHex, 1.2, 3);
+      mesh.add(light);
+
+      mesh.position.copy(startPos);
+      const target = new THREE.Vector3().addVectors(startPos, dir);
+      mesh.lookAt(target);
+
+      scene.add(mesh);
+
+      bullets.push({
+        bulletId,
+        mesh,
+        dir: dir.clone().normalize(),
+        owner,
+        spawnTime: Date.now()
+      });
+    }
+
+    function spawnBarrier(pos, rotY, owner, barrierId) {
+      const barrierWidth = 4.5;
+      const barrierHeight = 2.5;
+      const geo = new THREE.BoxGeometry(barrierWidth, barrierHeight, 0.15);
+      const glowColor = owner === 'player1' ? 0x00f0ff : 0xff007f;
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: glowColor,
+        roughness: 0.1,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.6,
+        emissive: glowColor,
+        emissiveIntensity: 0.5,
+        side: THREE.DoubleSide
+      });
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(pos);
+      mesh.rotation.y = rotY;
+
+      scene.add(mesh);
+
+      barriers[barrierId] = {
+        barrierId,
+        mesh,
+        owner,
+        health: 50,
+        expiresAt: Date.now() + BARRIER_DURATION,
+        bbox: new THREE.Box3(),
+        width: barrierWidth,
+        height: barrierHeight,
+        rotY
+      };
+    }
+
+    // --- STREAMING_CHUNK: Managing BOT AI behavior patterns... ---
+    // --- UIクールダウンヘルパー ---
+    function triggerCooldownUI(cardEl, overlayEl, textEl, cooldownMs) {
+      overlayEl.style.height = '100%';
+      textEl.innerText = 'COOLDOWN';
+      textEl.className = 'status-cooldown';
+
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const pct = Math.max(0, 100 - (elapsed / cooldownMs) * 100);
+        overlayEl.style.height = `${pct}%`;
+
+        if (elapsed >= cooldownMs) {
+          clearInterval(interval);
+          overlayEl.style.height = '0%';
+          textEl.innerText = 'READY';
+          textEl.className = 'status-ready';
+        }
+      }, 20);
+    }
+
+    function triggerActiveUI(cardEl, overlayEl, textEl, activeMs, totalCooldownMs) {
+      overlayEl.style.height = '0%';
+      textEl.innerText = 'ACTIVE';
+      textEl.className = 'status-active';
+
+      setTimeout(() => {
+        barrierActive = false;
+        triggerCooldownUI(cardEl, overlayEl, textEl, totalCooldownMs - activeMs);
+      }, activeMs);
+    }
+
+    // --- AI対戦システム：AIの行動制御ループ ---
+    function updateAI(dt) {
+      if (!isAIActive || !isPlaying) return;
+
+      const bot = players.player2;
+      const target = players.player1;
+
+      // 1. 照準（プレイヤーの方向を絶えず見つめる）
+      const diffX = target.mesh.position.x - bot.mesh.position.x;
+      const diffZ = target.mesh.position.z - bot.mesh.position.z;
+      bot.rotY = Math.atan2(diffX, diffZ);
+      bot.mesh.rotation.y = bot.rotY;
+
+      // 2. 移動パターン制御
+      if (!bot.nextMoveTime || Date.now() > bot.nextMoveTime) {
+        bot.nextMoveTime = Date.now() + 1200 + Math.random() * 1500;
+        bot.movePattern = Math.floor(Math.random() * 5);
+      }
+
+      const moveVec = new THREE.Vector3();
+      if (bot.movePattern === 1) moveVec.set(-1, 0, 0); // サイドステップ
+      if (bot.movePattern === 2) moveVec.set(1, 0, 0);
+      if (bot.movePattern === 3) moveVec.set(0, 0, 1);
+      if (bot.movePattern === 4) moveVec.set(0, 0, -1);
+
+      if (moveVec.lengthSq() > 0) {
+        moveVec.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), bot.rotY);
+        const botMove = moveVec.multiplyScalar(PLAYER_SPEED * 0.85 * dt);
+        const newBotPos = new THREE.Vector3().copy(bot.mesh.position).add(botMove);
+
+        // 外周判定
+        const margin = 1.2;
+        const boundary = ARENA_SIZE / 2 - margin;
+        newBotPos.x = Math.max(-boundary, Math.min(boundary, newBotPos.x));
+        newBotPos.z = Math.max(-boundary, Math.min(boundary, newBotPos.z));
+
+        // 障害物衝突
+        const botBBox = new THREE.Box3(
+          new THREE.Vector3(newBotPos.x - 0.6, 0, newBotPos.z - 0.6),
+          new THREE.Vector3(newBotPos.x + 0.6, 1.5, newBotPos.z + 0.6)
+        );
+
+        let collides = false;
+        for (const obs of obstacles) {
+          if (botBBox.intersectsBox(obs.bbox)) {
+            collides = true;
+            break;
+          }
+        }
+        if (!collides) {
+          bot.mesh.position.copy(newBotPos);
+          bot.pos = { x: newBotPos.x, y: newBotPos.y, z: newBotPos.z };
+        }
+      }
+
+      // 3. 自動射撃
+      if (!bot.lastShootTime || Date.now() - bot.lastShootTime > bot.shootCooldown) {
+        bot.lastShootTime = Date.now();
+        bot.shootCooldown = 1300 + Math.random() * 1100;
+
+        const dir = new THREE.Vector3().subVectors(target.mesh.position, bot.mesh.position).normalize();
+        const startPos = new THREE.Vector3().copy(bot.mesh.position).add(dir.clone().multiplyScalar(0.9));
+        startPos.y = 1.0;
+        
+        spawnBullet(startPos, dir, 'player2', `ai_${Date.now()}`);
+        playSound('laser');
+      }
+
+      // 4. 自動ブリンク回避
+      bullets.forEach(b => {
+        if (b.owner === 'player1') {
+          const dist = b.mesh.position.distanceTo(bot.mesh.position);
+          if (dist < 4.2 && (!bot.lastBlinkTime || Date.now() - bot.lastBlinkTime > 3500)) {
+            bot.lastBlinkTime = Date.now();
+            
+            const sideDir = new THREE.Vector3(-b.dir.z, 0, b.dir.x).normalize();
+            if (Math.random() < 0.5) sideDir.negate();
+
+            const prevPos = new THREE.Vector3().copy(bot.mesh.position);
+            const blinkTo = new THREE.Vector3().copy(prevPos).add(sideDir.multiplyScalar(6.5));
+
+            const boundary = ARENA_SIZE / 2 - 1.2;
+            blinkTo.x = Math.max(-boundary, Math.min(boundary, blinkTo.x));
+            blinkTo.z = Math.max(-boundary, Math.min(boundary, blinkTo.z));
+
+            bot.mesh.position.copy(blinkTo);
+            bot.pos = { x: blinkTo.y, y: blinkTo.y, z: blinkTo.z };
+
+            createBlinkTrail(prevPos, 0xff007f);
+            createBlinkTrail(blinkTo, 0xff007f);
+            triggerEmojiPopup('⚡', true);
+            playSound('blink');
+          }
+        }
+      });
+    }
+
+    // --- STREAMING_CHUNK: Updating physical boundaries, rendering frames, and processing hitboxes... ---
+    // --- 物理更新とフレームループ ---
+    let lastTime = performance.now();
+    let gameDuration = 0;
+    let timeInterval = null;
+    let localPositionSyncInterval = 0;
+
+    function startGameTimer() {
+      gameDuration = 0;
+      clearInterval(timeInterval);
+      timeInterval = setInterval(() => {
+        if (isPlaying) {
+          gameDuration++;
+          const min = String(Math.floor(gameDuration / 60)).padStart(2, '0');
+          const sec = String(gameDuration % 60).padStart(2, '0');
+          gameTimer.innerText = `${min}:${sec}`;
+        }
+      }, 1000);
+    }
+
+    function updatePhysics(dt) {
+      if (!isPlaying && !isSandbox) return;
+
+      const me = players[myRole];
+      if (!me || !me.mesh) return;
+
+      // 自分の回転
+      me.mesh.rotation.y = mouseRotationY;
+      me.rotY = mouseRotationY;
+
+      // 移動入力
+      const moveDirection = new THREE.Vector3();
+      if (keys.w) moveDirection.z += 1;
+      if (keys.s) moveDirection.z -= 1;
+      if (keys.a) moveDirection.x += 1;
+      if (keys.d) moveDirection.x -= 1;
+
+      if (moveDirection.lengthSq() > 0) {
+        moveDirection.normalize();
+        moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseRotationY);
+        
+        const deltaMove = moveDirection.multiplyScalar(PLAYER_SPEED * dt);
+        const newPos = new THREE.Vector3().copy(me.mesh.position).add(deltaMove);
+
+        const margin = 0.8;
+        const boundary = ARENA_SIZE / 2 - margin;
+        newPos.x = Math.max(-boundary, Math.min(boundary, newPos.x));
+        newPos.z = Math.max(-boundary, Math.min(boundary, newPos.z));
+
+        const pBBox = new THREE.Box3(
+          new THREE.Vector3(newPos.x - 0.6, 0, newPos.z - 0.6),
+          new THREE.Vector3(newPos.x + 0.6, 1.5, newPos.z + 0.6)
+        );
+
+        let collides = false;
+        for (const obs of obstacles) {
+          if (pBBox.intersectsBox(obs.bbox)) {
+            collides = true;
+            break;
+          }
+        }
+
+        if (!collides) {
+          me.mesh.position.copy(newPos);
+          me.pos = { x: newPos.x, y: newPos.y, z: newPos.z };
+        }
+      }
+
+      // Firestoreでの位置同期送信（P2P時）
+      if (db && roomId && isPlaying && !isAIActive) {
+        const now = Date.now();
+        if (now - localPositionSyncInterval > 80) { // 12FPS sync
+          localPositionSyncInterval = now;
+          const roomRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(roomId);
+          const stateKey = myRole === 'player1' ? 'hostState' : 'joinerState';
+          roomRef.update({
+            [stateKey]: { pos: me.pos, rotY: me.rotY, hp: me.hp }
+          }).catch(e => console.warn("Sync position failure:", e));
+        }
+      }
+
+      // P2P対戦相手の位置補間
+      if (isPlaying && !isAIActive) {
+        const oppRole = myRole === 'player1' ? 'player2' : 'player1';
+        const opp = players[oppRole];
+        if (opp && opp.mesh) {
+          if (opp.targetPos) {
+            opp.mesh.position.lerp(opp.targetPos, 0.3);
+            opp.pos = { x: opp.mesh.position.x, y: opp.mesh.position.y, z: opp.mesh.position.z };
+          }
+          let rotDiff = opp.targetRotY - opp.mesh.rotation.y;
+          rotDiff = Math.atan2(Math.sin(rotDiff), Math.cos(rotDiff));
+          opp.mesh.rotation.y += rotDiff * 0.3;
+          opp.rotY = opp.mesh.rotation.y;
+        }
+      }
+
+      // AI制御アップデート
+      if (isAIActive) {
+        updateAI(dt);
+      }
+
+      // 弾丸の挙動と衝突判定
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        const deltaMove = bullet.dir.clone().multiplyScalar(BULLET_SPEED * dt);
+        bullet.mesh.position.add(deltaMove);
+
+        const lifeDuration = (Date.now() - bullet.spawnTime) / 1000;
+        const outBounds = Math.abs(bullet.mesh.position.x) > ARENA_SIZE/2 || Math.abs(bullet.mesh.position.z) > ARENA_SIZE/2;
+        let destroyBullet = outBounds || lifeDuration > 1.8;
+
+        if (!destroyBullet) {
+          const bPos = bullet.mesh.position;
+          for (const obs of obstacles) {
+            if (obs.bbox.containsPoint(bPos)) {
+              createSparks(bPos, 0x555566, 6);
+              destroyBullet = true;
+              break;
+            }
+          }
+        }
+
+        // バリアとの衝突判定
+        if (!destroyBullet) {
+          Object.keys(barriers).forEach(id => {
+            const shield = barriers[id];
+            
+            // 自分のバリアは自分の弾丸を貫通する
+            if (bullet.owner === shield.owner) return;
+
+            if (shield.bbox.containsPoint(bullet.mesh.position)) {
+              createSparks(bullet.mesh.position, shield.owner === 'player1' ? 0x00f0ff : 0xff007f, 8);
+              destroyBullet = true;
+              playSound('barrierHit');
+
+              if (bullet.owner === myRole) {
+                triggerDamagePopup('-10 SHIELD', bullet.mesh.position, true);
+                if (isAIActive) {
+                  shield.health -= 10;
+                } else if (db && roomId) {
+                  sendFirestoreAction({ type: 'barrierHit', barrierId: id, damage: 10 });
+                }
+              }
+            }
+          });
+        }
+
+        // [修正] 敵および自分に対する確実な体全体当たり判定（3D AABBヒットボックス）
+        if (!destroyBullet) {
+          const targetRole = bullet.owner === 'player1' ? 'player2' : 'player1';
+          const targetPlayer = players[targetRole];
+
+          if (targetPlayer && targetPlayer.mesh) {
+            // 体全体を包み込む縦長の3Dヒットボックス
+            const hitBoxMin = new THREE.Vector3(
+              targetPlayer.mesh.position.x - 0.75, // 横幅判定
+              targetPlayer.mesh.position.y,        // 足元の高さ
+              targetPlayer.mesh.position.z - 0.75
+            );
+            const hitBoxMax = new THREE.Vector3(
+              targetPlayer.mesh.position.x + 0.75,
+              targetPlayer.mesh.position.y + 1.6,  // 頭頂部までの高さを完全にカバー
+              targetPlayer.mesh.position.z + 0.75
+            );
+            const playerHitBox = new THREE.Box3(hitBoxMin, hitBoxMax);
+
+            if (playerHitBox.containsPoint(bullet.mesh.position)) {
+              createSparks(bullet.mesh.position, 0xff0000, 12);
+              destroyBullet = true;
+              playSound('hit');
+
+              if (isAIActive) {
+                // AIソロプレイ：BOTから自分自身への被弾、および自分からBOTへの被弾を確実に処理
+                targetPlayer.hp = Math.max(0, targetPlayer.hp - 10);
+                updateHealthHUD();
+                
+                triggerDamagePopup('-10 HP', bullet.mesh.position, false);
+
+                if (targetRole === myRole) {
+                  cameraShake = 0.45;
+                  triggerDamageFlash(); // 赤フラッシュ演出
+                }
+
+                if (targetPlayer.hp <= 0) {
+                  endGame(targetRole === myRole ? 'defeat' : 'victory');
+                }
+              } else {
+                // P2Pオンライン：自分が敵に弾を当てた場合のみFirestoreにダメージを発信する
+                if (bullet.owner === myRole) {
+                  triggerDamagePopup('-10 HP', bullet.mesh.position, false);
+                  if (db && roomId && isPlaying) {
+                    sendFirestoreAction({ type: 'playerHit', role: targetRole, damage: 10 });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (destroyBullet) {
+          scene.remove(bullet.mesh);
+          bullets.splice(i, 1);
+        }
+      }
+
+      // バリアの監視
+      const now = Date.now();
+      Object.keys(barriers).forEach(id => {
+        const shield = barriers[id];
+        if (now > shield.expiresAt || shield.health <= 0) {
+          createSparks(shield.mesh.position, shield.owner === 'player1' ? 0x00f0ff : 0xff007f, 15);
+          scene.remove(shield.mesh);
+          delete barriers[id];
+        } else {
+          shield.bbox.setFromObject(shield.mesh);
+        }
+      });
+
+      // パーティクル
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+        p.velocity.y -= 9.8 * dt;
+        p.life -= dt;
+
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          particles.splice(i, 1);
+        }
+      }
+
+      if (cameraShake > 0.01) {
+        cameraShake *= 0.88;
+      } else {
+        cameraShake = 0;
+      }
+
+      if (targetFov > 65) {
+        targetFov -= dt * 70;
+      } else {
+        targetFov = 65;
+      }
+      currentFov += (targetFov - currentFov) * 0.15;
+      camera.fov = currentFov;
+      camera.updateProjectionMatrix();
+    }
+
+    // --- レンダリングループ（FPS追従） ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = performance.now();
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      lastTime = time;
+
+      updatePhysics(dt);
+
+      const me = players[myRole];
+      if (me && me.mesh && (isPlaying || isSandbox)) {
+        const headHeight = 1.45;
+        const eyePosition = new THREE.Vector3().copy(me.mesh.position).add(new THREE.Vector3(0, headHeight, 0));
+        camera.position.copy(eyePosition);
+
+        if (cameraShake > 0) {
+          camera.position.x += (Math.random() - 0.5) * cameraShake;
+          camera.position.y += (Math.random() - 0.5) * cameraShake;
+          camera.position.z += (Math.random() - 0.5) * cameraShake;
+        }
+
+        const lookTarget = new THREE.Vector3(0, 0, 1);
+        lookTarget.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
+        lookTarget.applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseRotationY);
+        lookTarget.add(camera.position);
+
+        camera.lookAt(lookTarget);
+      } else {
+        // ロビー俯瞰
+        const orbitRadius = 26;
+        const orbitSpeed = 0.06;
+        const t = time * 0.001 * orbitSpeed;
+        camera.position.set(Math.cos(t) * orbitRadius, 14, Math.sin(t) * orbitRadius);
+        camera.lookAt(0, 2, 0);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // --- STREAMING_CHUNK: Managing multiplayer state synchronization and event handlers... ---
+    // --- P2Pシステム Firestore Action 機構 ---
+    function sendFirestoreAction(actionData) {
+      if (!db || !roomId) return;
+      const roomRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(roomId);
+      const fieldKey = myRole === 'player1' ? 'hostAction' : 'joinerAction';
+      
+      // [修正] 微小な乱数を加えて確実に別アクションとして上書き検知させる
+      roomRef.update({
+        [fieldKey]: { ...actionData, timestamp: Date.now() + Math.random() }
+      }).catch(err => console.error("Event write failure:", err));
+    }
+
+    let lastProcessedActionId = 0;
+    function handleIncomingAction(action) {
+      if (!action || !action.timestamp || action.timestamp === lastProcessedActionId) return;
+      lastProcessedActionId = action.timestamp;
+
+      if (action.type === 'shoot') {
+        const startPos = new THREE.Vector3(action.startPos.x, action.startPos.y, action.startPos.z);
+        const dir = new THREE.Vector3(action.dir.x, action.dir.y, action.dir.z);
+        spawnBullet(startPos, dir, action.owner, action.bulletId);
+        playSound('laser');
+      } else if (action.type === 'placeBarrier') {
+        const pos = new THREE.Vector3(action.pos.x, action.pos.y, action.pos.z);
+        spawnBarrier(pos, action.rotY, action.owner, action.barrierId);
+        playSound('barrier');
+      } else if (action.type === 'barrierHit') {
+        const shield = barriers[action.barrierId];
+        if (shield) {
+          shield.health -= action.damage;
+        }
+      } else if (action.type === 'playerHit') {
+        const p = players[action.role];
+        if (p) {
+          p.hp = Math.max(0, p.hp - action.damage);
+          updateHealthHUD();
+          
+          // [修正] 被弾時のフラッシュ、ポップアップ、SE同期を確実に実行
+          const hitPosition = p.mesh ? p.mesh.position.clone() : new THREE.Vector3(0, 1, 0);
+          triggerDamagePopup('-10 HP', hitPosition, false);
+
+          if (action.role === myRole) {
+            cameraShake = 0.45;
+            playSound('hit');
+            triggerDamageFlash(); // 自分の画面をフラッシュ
+          } else {
+            playSound('hit');
+          }
+
+          if (p.hp <= 0 && isPlaying) {
+            endGame(action.role === myRole ? 'defeat' : 'victory');
+          }
+        }
+      } else if (action.type === 'blink') {
+        const start = new THREE.Vector3(action.startPos.x, action.startPos.y, action.startPos.z);
+        const target = new THREE.Vector3(action.targetPos.x, action.targetPos.y, action.targetPos.z);
+        createBlinkTrail(start, action.role === 'player1' ? 0x00f0ff : 0xff007f);
+        createBlinkTrail(target, action.role === 'player1' ? 0x00f0ff : 0xff007f);
+        triggerEmojiPopup('⚡', true);
+        playSound('blink');
+      } else if (action.type === 'chat') {
+        // [修正] 対戦相手のリアルタイム絵文字受信
+        triggerEmojiPopup(action.emoji, true);
+      }
+    }
+
+    // --- P2Pロジック：部屋の構築と接続管理 ---
+
+    // 1. HOST: 部屋を立てる
+    async function setupHost() {
+      const name = usernameInput.value.trim();
+      if (!name) {
+        alert("ユーザーネームを入力してください。");
+        return;
+      }
+      myUsername = name;
+
+      if (!db) {
+        alert("P2P通信システムが未接続です。クイックマッチ [AI対戦] をお試しください。");
+        return;
+      }
+
+      const generatedCode = Math.floor(1000 + Math.random() * 9000).toString();
+      roomId = generatedCode;
+      myRole = 'player1';
+
+      authScreen.classList.remove('active');
+      hostRoomScreen.classList.add('active');
+      roomCodeDisplay.innerText = generatedCode;
+
+      isSandbox = true;
+      sandboxBadge.style.display = 'block';
+      initArena();
+      initPlayers({ x: -15, y: 0.8, z: 0 }, 0);
+
+      const roomRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(roomId);
+      await roomRef.set({
+        roomId,
+        hostId: currentUser.uid,
+        hostName: myUsername,
+        status: 'waiting',
+        joinerId: '',
+        joinerName: '',
+        hostState: { pos: { x: -15, y: 0.8, z: 0 }, rotY: 0, hp: 100 },
+        joinerState: { pos: { x: 15, y: 0.8, z: Math.PI }, rotY: Math.PI, hp: 100 },
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      roomListenerUnsubscribe = roomRef.onSnapshot(docSnap => {
+        if (!docSnap.exists) return;
+        const data = docSnap.data();
+
+        if (data.status === 'active' && data.joinerId && isSandbox) {
+          isSandbox = false;
+          sandboxBadge.style.display = 'none';
+          hostRoomScreen.classList.remove('active');
+          opponentUsername = data.joinerName;
+
+          p1Name.innerText = myUsername;
+          p2Name.innerText = opponentUsername;
+          updateHealthHUD();
+
+          hudScreen.classList.add('active');
+          isPlaying = true;
+          startGameTimer();
+        }
+
+        if (isPlaying && data.joinerState) {
+          const opp = players.player2;
+          opp.targetPos = new THREE.Vector3(data.joinerState.pos.x, data.joinerState.pos.y, data.joinerState.pos.z);
+          opp.targetRotY = data.joinerState.rotY;
+        }
+
+        if (isPlaying && data.joinerAction) {
+          handleIncomingAction(data.joinerAction);
+        }
+      }, err => {
+        console.warn("Snapshot failure:", err);
+      });
+    }
+
+    // 2. JOIN: 部屋に参加
+    async function submitJoinRoom() {
+      const code = roomCodeInput.value.trim();
+      const name = usernameInput.value.trim();
+      if (!name) {
+        alert("ユーザーネームを入力してください。");
+        return;
+      }
+      myUsername = name;
+
+      if (!code || code.length !== 4) {
+        alert("有効な4桁の部屋IDを入力してください。");
+        return;
+      }
+
+      if (!db) {
+        alert("P2P通信システムが未接続です。クイックマッチ [AI対戦] をお試しください。");
+        return;
+      }
+
+      const roomRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(code);
+      const docSnap = await roomRef.get();
+
+      if (!docSnap.exists) {
+        alert("部屋が見つかりませんでした。再度番号を確認してください。");
+        return;
+      }
+
+      const data = docSnap.data();
+      if (data.status !== 'waiting') {
+        alert("指定の部屋は既に対戦中か、無効になっています。");
+        return;
+      }
+
+      roomId = code;
+      myRole = 'player2';
+
+      await roomRef.update({
+        status: 'active',
+        joinerId: currentUser.uid,
+        joinerName: myUsername
+      });
+
+      joinRoomScreen.classList.remove('active');
+      authScreen.classList.remove('active');
+
+      initArena();
+      initPlayers({ x: 15, y: 0.8, z: Math.PI }, Math.PI);
+
+      opponentUsername = data.hostName;
+      p1Name.innerText = myUsername;
+      p2Name.innerText = opponentUsername;
+      updateHealthHUD();
+
+      hudScreen.classList.add('active');
+      isPlaying = true;
+      startGameTimer();
+
+      roomListenerUnsubscribe = roomRef.onSnapshot(snap => {
+        if (!snap.exists) return;
+        const freshData = snap.data();
+
+        if (isPlaying && freshData.hostState) {
+          const opp = players.player1;
+          opp.targetPos = new THREE.Vector3(freshData.hostState.pos.x, freshData.hostState.pos.y, freshData.hostState.pos.z);
+          opp.targetRotY = freshData.hostState.rotY;
+        }
+
+        if (isPlaying && freshData.hostAction) {
+          handleIncomingAction(freshData.hostAction);
+        }
+      }, err => {
+        console.warn("Snapshot failure:", err);
+      });
+    }
+
+    // --- STREAMING_CHUNK: Hooking up UI event controllers... ---
+    // --- 各種UIナビゲーション ---
+    hostBtn.addEventListener('click', () => {
+      setupHost();
+    });
+
+    joinRoomBtn.addEventListener('click', () => {
+      joinRoomScreen.classList.add('active');
+    });
+
+    cancelHostBtn.addEventListener('click', () => {
+      cleanupRoomSession();
+      hostRoomScreen.classList.remove('active');
+      authScreen.classList.add('active');
+    });
+
+    cancelJoinBtn.addEventListener('click', () => {
+      joinRoomScreen.classList.remove('active');
+    });
+
+    submitJoinBtn.addEventListener('click', () => {
+      submitJoinRoom();
+    });
+
+    // クイックマッチ [AI対戦] の即時発足
+    quickMatchBtn.addEventListener('click', () => {
+      const name = usernameInput.value.trim();
+      if (!name) {
+        alert("ユーザーネームを入力してください。");
+        return;
+      }
+      myUsername = name;
+      isAIActive = true;
+      myRole = 'player1';
+
+      authScreen.classList.remove('active');
+
+      initArena();
+      initPlayers({ x: -15, y: 0.8, z: 0 }, 0);
+
+      const bot = players.player2;
+      bot.shootCooldown = 1500;
+      bot.lastShootTime = Date.now();
+      bot.mesh.visible = true;
+
+      p1Name.innerText = myUsername;
+      p2Name.innerText = "バトルAI (BOT)";
+      updateHealthHUD();
+
+      hudScreen.classList.add('active');
+      isPlaying = true;
+      startGameTimer();
+    });
+
+    function cleanupRoomSession() {
+      isSandbox = false;
+      sandboxBadge.style.display = 'none';
+      if (roomListenerUnsubscribe) {
+        roomListenerUnsubscribe();
+        roomListenerUnsubscribe = null;
+      }
+      if (db && roomId && myRole === 'player1') {
+        db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rooms').doc(roomId).delete().catch(e => {});
+      }
+      roomId = null;
+    }
+
+    function returnToLobby() {
+      cleanupRoomSession();
+      isPlaying = false;
+      isAIActive = false;
+      clearInterval(timeInterval);
+      endScreen.classList.remove('active');
+      hudScreen.classList.remove('active');
+      authScreen.classList.add('active');
+      document.exitPointerLock();
+
+      initArena();
+    }
+
+    rematchBtn.addEventListener('click', () => {
+      endScreen.classList.remove('active');
+      authScreen.classList.add('active');
+    });
+
+    returnToLobbyBtn.addEventListener('click', () => {
+      returnToLobby();
+    });
+
+    function updateHealthHUD() {
+      const me = players[myRole];
+      const oppRole = myRole === 'player1' ? 'player2' : 'player1';
+      const opp = players[oppRole];
+
+      if (!me || !opp) return;
+
+      p1HpBar.style.width = `${me.hp}%`;
+      p1HpText.innerText = Math.round(me.hp);
+      
+      p2HpBar.style.width = `${opp.hp}%`;
+      p2HpText.innerText = Math.round(opp.hp);
+
+      updateHpBarColor(p1HpBar, me.hp, 'cyan');
+      updateHpBarColor(p2HpBar, opp.hp, 'magenta');
+    }
+
+    function updateHpBarColor(barEl, hp, theme) {
+      const glowEl = barEl.nextElementSibling;
+      barEl.classList.remove('cyan-bg', 'magenta-bg', 'warning-hp-bg', 'critical-hp-bg');
+      if (glowEl) glowEl.classList.remove('cyan-bg', 'magenta-bg', 'warning-hp-bg', 'critical-hp-bg');
+
+      let activeClass = `${theme}-bg`;
+      if (hp <= 25) {
+        activeClass = 'critical-hp-bg';
+      } else if (hp <= 55) {
+        activeClass = 'warning-hp-bg';
+      }
+
+      barEl.classList.add(activeClass);
+      if (glowEl) glowEl.classList.add(activeClass);
+    }
+
+    function endGame(result) {
+      isPlaying = false;
+      clearInterval(timeInterval);
+      document.exitPointerLock();
+      
+      playSound(result === 'victory' ? 'barrier' : 'explosion');
+
+      hudScreen.classList.remove('active');
+      endScreen.classList.add('active');
+
+      const card = endScreen.querySelector('.glass-card');
+      card.className = 'glass-card end-card';
+
+      if (result === 'victory') {
+        endResultText.innerText = 'VICTORY';
+        endResultText.className = 'neon-text-cyan';
+        endSubText.innerText = '電脳アリーナの完全覇者となりました！';
+        card.classList.add('glow-cyan');
+      } else {
+        endResultText.innerText = 'DEFEAT';
+        endResultText.className = 'neon-text-magenta';
+        endSubText.innerText = '敵の射撃により電脳回路が消失しました。';
+        card.classList.add('glow-magenta');
+      }
+
+      endOpponentName.innerText = isAIActive ? "バトルAI (BOT)" : opponentUsername;
+      
+      const min = String(Math.floor(gameDuration / 60)).padStart(2, '0');
+      const sec = String(gameDuration % 60).padStart(2, '0');
+      endMatchTime.innerText = `${min}:${sec}`;
+
+      cleanupRoomSession();
+    }
+
+    // --- ゲーム起動システム ---
+    initArena();
+    animate();
+
+    window.onload = function() {
+      initFirebase();
+    };
+  </script>
+</body>
+</html>
